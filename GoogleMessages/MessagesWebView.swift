@@ -71,6 +71,7 @@ struct MessagesWebView: UIViewRepresentable {
         init(connectivity: ConnectivityMonitor) {
             self.connectivity = connectivity
             self.lastSection = .inbox
+            super.init()
             self.reloadObserver = NotificationCenter.default.addObserver(
                 forName: .messagesReloadRequested, object: nil, queue: .main
             ) { [weak self] _ in
