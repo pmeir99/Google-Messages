@@ -1,0 +1,27 @@
+name: GoogleMessages
+options:
+  bundleIdPrefix: com.pmeir99
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    TARGETED_DEVICE_FAMILY: "2"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGNING_ALLOWED: "NO"
+targets:
+  GoogleMessages:
+    type: application
+    platform: iOS
+    sources:
+      - path: GoogleMessages
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pmeir99.GoogleMessages
+        PRODUCT_NAME: Google Messages
+        INFOPLIST_FILE: GoogleMessages/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        SUPPORTS_MACCATALYST: "NO"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
