@@ -118,7 +118,7 @@ struct RootView: View {
             .padding(.vertical, 12)
             .background(.bar)
 
-            if let loadError, !connectivity.isOnline {
+            if loadError != nil && !connectivity.isOnline {
                 ContentUnavailableView("You're offline", systemImage: "wifi.slash", description: Text("Reconnect to the internet, then refresh Google Messages."))
                     .frame(maxHeight: 180)
             } else if let loadError {
