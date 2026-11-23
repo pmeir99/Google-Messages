@@ -16,10 +16,15 @@ targets:
     platform: iOS
     sources:
       - path: GoogleMessages
+        excludes:
+          - AppIcon.icon
+      - path: GoogleMessages/AppIcon.icon
+        type: file
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pmeir99.GoogleMessages
         PRODUCT_NAME: Google Messages
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: GoogleMessages/Info.plist
         GENERATE_INFOPLIST_FILE: "NO"
         SUPPORTS_MACCATALYST: "NO"

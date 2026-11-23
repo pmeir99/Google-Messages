@@ -69,7 +69,7 @@ jobs:
               ref: `refs/heads/${branch}`,
               sha: context.sha
             });
-            const labels = ["macos-26", "macos-15", "macos-15-intel"];
+            const labels = ["macos-26", "macos-26-intel", "xcode-27"];
 
             core.setOutput("race_id", raceId);
             core.setOutput("branch", branch);
