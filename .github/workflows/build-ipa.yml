@@ -20,7 +20,13 @@ jobs:
         with:
           script: |
             const raceId = `${context.runId}-${process.env.GITHUB_RUN_ATTEMPT}`;
-            const branch = context.ref.replace(/^refs\/heads\//, "");
+            const branch = `ipa-races/${raceId}`;
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/heads/${branch}`,
+              sha: context.sha
+            });
             const labels = ["macos-26", "macos-15", "macos-15-intel"];
 
             core.setOutput("race_id", raceId);
