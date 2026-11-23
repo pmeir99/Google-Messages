@@ -52,6 +52,7 @@ struct RootView: View {
             if selectedSection != .settings {
                 selectedSection = .inbox
                 loadError = nil
+                NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagesWebViewLoaded)) { _ in
