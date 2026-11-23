@@ -59,7 +59,7 @@ jobs:
             for (const branch of staleBranches) {
               for (const ref of [`heads/${branch}`, `heads/ipa-race-winners/${branch.slice("ipa-races/".length)}`]) {
                 try { await github.rest.git.deleteRef({ owner: context.repo.owner, repo: context.repo.repo, ref }); }
-                catch (error) { if (error.status !== 404) throw error; }
+                catch (error) { if (error.status !== 404 && error.status !== 422) throw error; }
               }
             }
             const branch = `ipa-races/${raceId}`;
@@ -155,5 +155,5 @@ jobs:
                 ref: `heads/ipa-race-winners/${process.env.RACE_ID}`
               });
             } catch (error) {
-              if (error.status !== 404) throw error;
+              if (error.status !== 404 && error.status !== 422) throw error;
             }
