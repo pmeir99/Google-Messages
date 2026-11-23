@@ -1,0 +1,114 @@
+name: Build unsigned iPad IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  dispatch-runner-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Start the compatible macOS runner race
+        id: race
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const raceId = `${context.runId}-${context.runAttempt}`;
+            const branch = context.ref.replace(/^refs\/heads\//, "");
+            const labels = ["macos-26", "macos-15", "macos-15-intel"];
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/heads/ipa-races/${raceId}`,
+              sha: context.sha
+            });
+            core.setOutput("race_id", raceId);
+            core.setOutput("branch", branch);
+
+            await Promise.all(labels.map(runner_label =>
+              github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "ipa-race-worker.yml",
+                ref: branch,
+                inputs: { race_id: raceId, runner_label }
+              })
+            ));
+            core.info(`Started ${labels.length} iOS-compatible macOS runners for race ${raceId}.`);
+
+      - name: Wait for the winning IPA build
+        id: winner
+        uses: actions/github-script@v7
+        env:
+          RACE_ID: ${{ steps.race.outputs.race_id }}
+          SOURCE_BRANCH: ${{ steps.race.outputs.branch }}
+        with:
+          script: |
+            const raceId = process.env.RACE_ID;
+            const branch = process.env.SOURCE_BRANCH;
+            for (let attempt = 0; attempt < 108; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "ipa-race-worker.yml",
+                branch,
+                event: "workflow_dispatch",
+                per_page: 100
+              });
+              const matching = data.workflow_runs.filter(run =>
+                (run.display_title || "").startsWith(`IPA-RACE-${raceId}-`)
+              );
+              const winner = matching.find(run => run.conclusion === "success");
+              if (winner) {
+                core.setOutput("run_id", String(winner.id));
+                core.info(`Winning macOS build: run ${winner.id}.`);
+                return;
+              }
+              if (matching.length >= 3 && matching.every(run =>
+                ["completed", "cancelled", "failure", "timed_out"].includes(run.status)
+              )) {
+                throw new Error("All runner candidates finished without a successful IPA build.");
+              }
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+            throw new Error("No runner produced an IPA within 18 minutes.");
+
+      - name: Download the winning unsigned IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: Google-Messages-unsigned-IPA
+          run-id: ${{ steps.winner.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./release
+
+      - name: Publish IPA on this build run
+        uses: actions/upload-artifact@v4
+        with:
+          name: Google-Messages-unsigned-IPA
+          path: ./release/GoogleMessages-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove the runner-race lock
+        if: always() && steps.race.outputs.race_id != ''
+        uses: actions/github-script@v7
+        env:
+          RACE_ID: ${{ steps.race.outputs.race_id }}
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/ipa-races/${process.env.RACE_ID}`
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
