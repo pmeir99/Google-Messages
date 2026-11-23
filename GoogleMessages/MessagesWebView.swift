@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import Network
 
 enum MessagesSection: String, CaseIterable, Identifiable {
     case inbox = "Inbox"
@@ -11,10 +12,10 @@ enum MessagesSection: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .inbox: "bubble.left.and.bubble.right.fill"
-        case .archived: "archivebox"
-        case .spam: "hand.raised"
-        case .settings: "gearshape"
+        case .inbox: return "bubble.left.and.bubble.right.fill"
+        case .archived: return "archivebox"
+        case .spam: return "hand.raised"
+        case .settings: return "gearshape"
         }
     }
 }
