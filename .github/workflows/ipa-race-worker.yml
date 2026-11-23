@@ -1,0 +1,133 @@
+name: iPad IPA runner candidate
+run-name: IPA-RACE-${{ inputs.race_id }}-${{ inputs.runner_label }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      race_id:
+        description: Parent build race identifier
+        required: true
+        type: string
+      runner_label:
+        description: Compatible macOS runner to try
+        required: true
+        type: choice
+        options:
+          - macos-26
+          - macos-15
+          - macos-15-intel
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  claim-and-build:
+    name: Claim runner and build unsigned IPA
+    runs-on: ${{ inputs.runner_label }}
+    timeout-minutes: 45
+    steps:
+      - name: Atomically claim this race and cancel the other runners
+        id: claim
+        uses: actions/github-script@v7
+        env:
+          RACE_ID: ${{ inputs.race_id }}
+        with:
+          script: |
+            const raceId = process.env.RACE_ID;
+            const ref = `refs/heads/ipa-races/${raceId}`;
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+                sha: context.sha
+              });
+              core.setOutput("winner", "true");
+              core.info("This runner atomically claimed the build.");
+            } catch (error) {
+              if (error.status === 422 || error.status === 409) {
+                core.setOutput("winner", "false");
+                core.notice("Another runner already claimed the build; ending this candidate immediately.");
+                return;
+              }
+              throw error;
+            }
+
+            // Let the controller's remaining dispatch requests become visible, then
+            // cancel the other independent workflow runs as soon as they are queued.
+            let candidates = [];
+            for (let attempt = 0; attempt < 30; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "ipa-race-worker.yml",
+                branch: context.ref.replace(/^refs\/heads\//, ""),
+                event: "workflow_dispatch",
+                per_page: 100
+              });
+              candidates = data.workflow_runs.filter(run =>
+                (run.display_title || "").startsWith(`IPA-RACE-${raceId}-`)
+              );
+              if (candidates.length >= 3) break;
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            for (const run of candidates) {
+              if (run.id === context.runId || ["completed", "cancelled"].includes(run.status)) continue;
+              try {
+                await github.rest.actions.cancelWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id
+                });
+                core.info(`Cancelled losing candidate workflow run ${run.id}.`);
+              } catch (error) {
+                if (error.status !== 409 && error.status !== 404) throw error;
+              }
+            }
+
+      - name: Check out app source
+        if: steps.claim.outputs.winner == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        if: steps.claim.outputs.winner == 'true'
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        if: steps.claim.outputs.winner == 'true'
+        run: xcodegen generate
+
+      - name: Archive unsigned iPad app
+        if: steps.claim.outputs.winner == 'true'
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project GoogleMessages.xcodeproj \
+            -scheme GoogleMessages \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/GoogleMessages.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: Package unsigned IPA
+        if: steps.claim.outputs.winner == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$RUNNER_TEMP/GoogleMessages.xcarchive/Products/Applications/Google Messages.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qr "$GITHUB_WORKSPACE/GoogleMessages-unsigned.ipa" Payload)
+
+      - name: Upload unsigned IPA
+        if: steps.claim.outputs.winner == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Google-Messages-unsigned-IPA
+          path: GoogleMessages-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
