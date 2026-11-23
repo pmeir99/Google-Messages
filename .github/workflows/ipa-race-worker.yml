@@ -64,9 +64,7 @@ jobs:
                 event: "workflow_dispatch",
                 per_page: 100
               });
-              candidates = data.workflow_runs.filter(run =>
-                (run.display_title || "") === `IPA-RACE-${raceId}`
-              );
+              candidates = data.workflow_runs;
               if (candidates.length >= 3) break;
               await new Promise(resolve => setTimeout(resolve, 2000));
             }
