@@ -101,7 +101,7 @@ struct MessagesWebView: UIViewRepresentable {
                 .find(el => (el.getAttribute('aria-label') || el.innerText || '').trim() === text);
               const menu = find('Main menu');
               if (menu && menu.getAttribute('aria-expanded') !== 'true') menu.click();
-              setTimeout(() => { const item = find((Self.jsString(label))); if (item) item.click(); }, 120);
+              setTimeout(() => { const item = find(\(Self.jsString(label))); if (item) item.click(); }, 120);
             })();
             """
             webView?.evaluateJavaScript(script)
