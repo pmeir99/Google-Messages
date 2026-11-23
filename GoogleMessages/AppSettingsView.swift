@@ -24,9 +24,9 @@ struct AppSettingsView: View {
                 Text("Google's site data is held in this app's private WebKit store, separate from Safari.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Button(action: onOpenMessages) {
-                    Label("Sign in or pair with QR code", systemImage: "qrcode")
+                    Label("Sign in or pair your phone", systemImage: "iphone.and.arrow.forward")
                 }
-                Text("Google handles account sign-in and phone pairing in its secure web flow. After pairing, conversations are shown in the native iPad interface.")
+                Text("Google handles account sign-in and phone pairing in its secure web flow. The available pairing method depends on Google's current options for your account and region.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
@@ -45,7 +45,7 @@ struct AppSettingsView: View {
             Section("Connection and compatibility") {
                 LabeledContent("Internet", value: connectivity.isOnline ? "Connected" : "Offline")
                 Button(action: onOpenMessages) { Label("Open Google Messages web client", systemImage: "globe") }
-                Text("Use the Google page for account recovery, phone pairing, and features that Google's page does not expose to the native bridge.")
+                Text("Use the Google page for account recovery, pairing, and features that Google does not expose to the native interface.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
