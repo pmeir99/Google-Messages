@@ -159,6 +159,7 @@ final class ConnectivityMonitor: ObservableObject {
 }
 
 extension Notification.Name {
+    static let messagesReloadRequested = Notification.Name("messagesReloadRequested")
     static let messagesWebViewLoaded = Notification.Name("messagesWebViewLoaded")
     static let messagesWebViewFailed = Notification.Name("messagesWebViewFailed")
     static let messagesBridgeUpdated = Notification.Name("messagesBridgeUpdated")
