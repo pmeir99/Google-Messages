@@ -50,7 +50,7 @@ final class MessagesWebEngine: NSObject, ObservableObject, WKNavigationDelegate,
     }
 
     func selectConversation(_ conversation: MessageConversation) {
-        webView.evaluateJavaScript("window.__gmNative.selectConversation(\(Self.js(conversation.title)))")
+        webView.evaluateJavaScript("window.__gmNative.selectConversation(\(Self.js(conversation.id)), \(Self.js(conversation.title)))")
     }
     func send(_ text: String) { webView.evaluateJavaScript("window.__gmNative.send(\(Self.js(text)))") }
     func startNewConversation() { webView.evaluateJavaScript("window.__gmNative.newConversation()") }
@@ -124,7 +124,11 @@ final class MessagesWebEngine: NSObject, ObservableObject, WKNavigationDelegate,
       const findText = (selectors, text) => [...document.querySelectorAll(selectors)].find(e => label(e) === text || label(e).includes(text));
       window.__gmNative = {
         last:'',
-        selectConversation: title => { const e = [...document.querySelectorAll('[role="option"],[role="listitem"]')].find(x => label(x).includes(title)); e?.click(); },
+        selectConversation: (id, title) => {
+          const options = [...document.querySelectorAll('[role="listbox"] [role="option"],[role="listbox"] [role="listitem"]')];
+          const exact = options.find((e, i) => (e.getAttribute('data-id') || (label(e).split(String.fromCharCode(10))[0] || 'Conversation') + '-' + i) === id);
+          (exact || options.find(e => label(e).includes(title)))?.click();
+        },
         send: text => {
           const box = [...document.querySelectorAll('[contenteditable="true"],textarea,[role="textbox"]')].filter(e => e.getClientRects().length).pop();
           if (!box) return;
@@ -139,8 +143,14 @@ final class MessagesWebEngine: NSObject, ObservableObject, WKNavigationDelegate,
         attach: () => document.querySelector('input[type="file"]')?.click(),
         settings: () => (findText('a,button,[role="button"]','Settings') || findText('a,button,[role="button"]','Main menu'))?.click()
       };
-      new MutationObserver(post).observe(document.documentElement,{childList:true,subtree:true,characterData:true,attributes:true});
-      post(); setInterval(post,1800);
+      let updateTimer = null;
+      const schedulePost = () => {
+        if (updateTimer) return;
+        updateTimer = setTimeout(() => { updateTimer = null; post(); }, 250);
+      };
+      new MutationObserver(schedulePost).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+      post();
+      setInterval(post,5000);
     })();
     """#
 }

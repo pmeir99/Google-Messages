@@ -134,7 +134,11 @@ struct RootView: View {
         .navigationSplitViewStyle(.balanced)
         .background {
             if engine.connected && !showGooglePage {
-                MessagesWebHost(engine: engine, visible: false).frame(width: 1, height: 1).opacity(0.01)
+                MessagesWebHost(engine: engine, visible: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(0.01)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
         }
         .toolbar {
