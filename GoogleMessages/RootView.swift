@@ -33,7 +33,6 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagesAppBecameActive)) { _ in
             BackgroundRefreshScheduler.shared.schedule()
-            NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
         }
         .sheet(isPresented: $showCompose) {
             ComposeView(conversations: engine.conversations) { conversation in
@@ -95,11 +94,17 @@ struct RootView: View {
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
 
-                List(selection: $selected) {
+                List {
                     ForEach(filtered) { conversation in
-                        ConversationRow(conversation: conversation)
-                            .tag(Optional(conversation))
-                            .listRowInsets(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
+                        Button {
+                            selected = conversation
+                            engine.selectConversation(conversation)
+                        } label: {
+                            ConversationRow(conversation: conversation)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
+                        .listRowBackground(selected?.id == conversation.id ? Color.blue.opacity(0.10) : Color.clear)
                     }
                 }
                 .listStyle(.plain)
@@ -133,7 +138,14 @@ struct RootView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Refresh conversations")
+                .accessibilityLabel("Refresh conversations")
                 Button { showGooglePage = true } label: { Image(systemName: "globe") }
                     .help("Open Google Messages web client")
                     .accessibilityLabel("Open Google Messages web client")
@@ -181,11 +193,7 @@ private struct ConversationRow: View {
     let conversation: MessageConversation
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(Color.blue.gradient).frame(width: 48, height: 48)
-                Text(String(conversation.title.prefix(1)).uppercased())
-                    .font(.headline).foregroundStyle(.white)
-            }
+            ConversationAvatar(conversation: conversation, size: 50)
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(conversation.title).font(.body.weight(conversation.unread ? .semibold : .medium)).lineLimit(1)
@@ -203,6 +211,36 @@ private struct ConversationRow: View {
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
+    }
+}
+
+struct ConversationAvatar: View {
+    let conversation: MessageConversation
+    var size: CGFloat
+
+    var body: some View {
+        Group {
+            if let raw = conversation.avatarURL, let url = URL(string: raw) {
+                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.2))) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        fallback
+                    }
+                }
+            } else {
+                fallback
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
+    }
+
+    private var fallback: some View {
+        Circle().fill(Color.blue.gradient)
+            .overlay(Text(String(conversation.title.prefix(1)).uppercased())
+                .font(.headline).foregroundStyle(.white))
     }
 }
 

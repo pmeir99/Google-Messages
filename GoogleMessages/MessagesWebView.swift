@@ -90,7 +90,17 @@ final class MessagesWebEngine: NSObject, ObservableObject, WKNavigationDelegate,
           const text = norm(e.innerText);
           const title = bits.find(x => x.length < 80) || text.split('\n')[0] || 'Conversation';
           const time = e.querySelector('time')?.innerText || '';
-          return {id: e.getAttribute('data-id') || title + '-' + i, title, preview: text.replace(title, '').trim(), time,
+          const image = [...e.querySelectorAll('img')].find(img => img.getClientRects().length && img.currentSrc && /^https?:/i.test(img.currentSrc));
+          let avatarURL = image?.currentSrc || null;
+          if (!avatarURL) {
+            const avatar = [...e.querySelectorAll('*')].find(node => {
+              const bg = getComputedStyle(node).backgroundImage;
+              return bg && bg !== 'none' && /^url\(["']?https?:/i.test(bg);
+            });
+            const bg = avatar ? getComputedStyle(avatar).backgroundImage : '';
+            avatarURL = bg.match(/url\(["']?(https?:[^"')]+)["']?\)/i)?.[1] || null;
+          }
+          return {id: e.getAttribute('data-id') || title + '-' + i, title, preview: text.replace(title, '').trim(), time, avatarURL,
             unread: /unread/i.test(e.getAttribute('aria-label') || '') || !!e.querySelector('[aria-label*="unread" i]'),
             group: !!e.querySelector('[aria-label*="group" i]')};
         });

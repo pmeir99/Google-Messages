@@ -7,6 +7,7 @@ struct MessageConversation: Identifiable, Hashable, Decodable {
     var time: String
     var unread: Bool
     var group: Bool
+    var avatarURL: String?
 }
 
 struct MessageItem: Identifiable, Hashable, Decodable {

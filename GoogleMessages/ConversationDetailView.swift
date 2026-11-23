@@ -79,8 +79,7 @@ struct ConversationDetailView: View {
 
     private var chatHeader: some View {
         HStack(spacing: 12) {
-            Circle().fill(Color.blue.gradient).frame(width: 42, height: 42)
-                .overlay(Text(String(conversation.title.prefix(1)).uppercased()).font(.headline).foregroundStyle(.white))
+            ConversationAvatar(conversation: conversation, size: 42)
             VStack(alignment: .leading, spacing: 2) {
                 Text(conversation.title).font(.headline)
                 Text(conversation.group ? "Group conversation" : "Google Messages")
