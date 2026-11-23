@@ -87,14 +87,6 @@ struct ConversationDetailView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button {} label: { Image(systemName: "phone") }.accessibilityLabel("Call")
-            Button {} label: { Image(systemName: "video") }.accessibilityLabel("Video call")
-            Menu {
-                Button("Search in conversation", systemImage: "magnifyingglass") {}
-                Button("Open Google conversation", systemImage: "globe") { engine.selectConversation(conversation) }
-                Button("Google Messages settings", systemImage: "gearshape") { engine.openGoogleSettings() }
-            } label: { Image(systemName: "ellipsis.circle").font(.title3) }
-                .accessibilityLabel("Conversation options")
         }
         .padding(.horizontal, 18).padding(.vertical, 10)
         .background(.bar)
