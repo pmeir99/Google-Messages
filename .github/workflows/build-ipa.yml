@@ -28,7 +28,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: "build-ipa.yml",
-              branch: context.ref.replace(/^refs\\/heads\\//, ""),
+              branch: context.ref.slice("refs/heads/".length),
               event: context.eventName,
               per_page: 100
             });
