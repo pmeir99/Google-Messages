@@ -81,7 +81,8 @@
               0,
               0
             ]
-          }
+          },
+          "hidden": false
         },
         {
           "name": "Front bubble shell",
@@ -93,7 +94,8 @@
               0,
               0
             ]
-          }
+          },
+          "hidden": false
         },
         {
           "name": "Sapphire inset",
@@ -105,7 +107,8 @@
               0,
               0
             ]
-          }
+          },
+          "hidden": false
         },
         {
           "name": "Message dots",
@@ -117,7 +120,8 @@
               0,
               0
             ]
-          }
+          },
+          "hidden": false
         }
       ]
     }
