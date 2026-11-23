@@ -1,102 +1,87 @@
 {
-  "color-space-for-untagged-svg-colors": "srgb",
   "fill": {
-    "linear-gradient": [
-      "display-p3:0.02500,0.04300,0.09000,1.00000",
-      "display-p3:0.06000,0.11000,0.21000,1.00000"
-    ]
+    "solid": "display-p3:0.02500,0.04300,0.09000,1.00000"
   },
-  "fill-specializations": [
-    {
-      "appearance": "light",
-      "value": {
-        "linear-gradient": [
-          "display-p3:0.15000,0.24000,0.42000,1.00000",
-          "display-p3:0.30000,0.43000,0.69000,1.00000"
-        ]
-      }
-    },
-    {
-      "appearance": "dark",
-      "value": {
-        "linear-gradient": [
-          "display-p3:0.00800,0.01600,0.04000,1.00000",
-          "display-p3:0.02800,0.06000,0.13000,1.00000"
-        ]
-      }
-    }
-  ],
   "groups": [
     {
-      "name": "Messages",
-      "lighting": "individual",
-      "specular": true,
-      "blur-material": 0.12,
-      "translucency": {
-        "enabled": true,
-        "value": 0.42
-      },
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.48
-      },
       "layers": [
         {
-          "name": "Rear glass bubble",
+          "blend-mode": "normal",
+          "glass": true,
+          "hidden": false,
           "image-name": "RearBubble.svg",
-          "glass": true,
+          "name": "Rear glass bubble",
+          "opacity": 1,
           "position": {
             "scale": 0.84,
             "translation-in-points": [
               0,
               0
             ]
-          },
-          "hidden": false
+          }
         },
         {
-          "name": "Front bubble shell",
+          "blend-mode": "normal",
+          "glass": true,
+          "hidden": false,
           "image-name": "FrontShell.svg",
-          "glass": true,
+          "name": "Front bubble shell",
+          "opacity": 1,
           "position": {
             "scale": 0.84,
             "translation-in-points": [
               0,
               0
             ]
-          },
-          "hidden": false
+          }
         },
         {
-          "name": "Sapphire inset",
+          "blend-mode": "normal",
+          "glass": true,
+          "hidden": false,
           "image-name": "FrontFace.svg",
-          "glass": true,
+          "name": "Sapphire inset",
+          "opacity": 1,
           "position": {
             "scale": 0.84,
             "translation-in-points": [
               0,
               0
             ]
-          },
-          "hidden": false
+          }
         },
         {
-          "name": "Message dots",
-          "image-name": "MessageDots.svg",
+          "blend-mode": "normal",
           "glass": false,
+          "hidden": false,
+          "image-name": "MessageDots.svg",
+          "name": "Message dots",
+          "opacity": 1,
           "position": {
             "scale": 0.84,
             "translation-in-points": [
               0,
               0
             ]
-          },
-          "hidden": false
+          }
         }
-      ]
+      ],
+      "lighting": "individual",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
     }
   ],
   "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
     "squares": "shared"
   }
 }
