@@ -37,7 +37,7 @@ struct AppSettingsView: View {
             Section("Background refresh") {
                 Toggle("Allow background availability checks", isOn: $backgroundCheckEnabled)
                     .onChange(of: backgroundCheckEnabled) { _, enabled in
-                        if enabled { BackgroundRefreshScheduler.shared.schedule() }
+                        if enabled { BackgroundRefreshScheduler.shared.schedule() } else { BackgroundRefreshScheduler.shared.cancel() }
                     }
                 Text("iPadOS may run a brief site availability check while the app is in the background. It cannot keep the web client continuously active; the inbox refreshes when you return to the app.")
                     .font(.footnote)
