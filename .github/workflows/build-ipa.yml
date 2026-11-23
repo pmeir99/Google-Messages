@@ -56,9 +56,7 @@ jobs:
                 event: "workflow_dispatch",
                 per_page: 100
               });
-              const matching = data.workflow_runs.filter(run =>
-                (run.display_title || "") === `IPA-RACE-${raceId}`
-              );
+              const matching = data.workflow_runs;
               const winner = matching.find(run => run.conclusion === "success");
               if (winner) {
                 core.setOutput("run_id", String(winner.id));
@@ -102,6 +100,11 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: `heads/ipa-races/${process.env.RACE_ID}`
+              });
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/ipa-race-winners/${process.env.RACE_ID}`
               });
             } catch (error) {
               if (error.status !== 404) throw error;
