@@ -83,5 +83,19 @@
       "watchOS"
     ],
     "squares": "shared"
-  }
+  },
+  "fill-specializations": [
+    {
+      "appearance": "light",
+      "value": {
+        "solid": "display-p3:0.10500,0.18500,0.32000,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "display-p3:0.01000,0.02000,0.05000,1.00000"
+      }
+    }
+  ]
 }
