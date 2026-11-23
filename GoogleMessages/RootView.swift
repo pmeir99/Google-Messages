@@ -1,192 +1,246 @@
 import SwiftUI
-import Network
 import UIKit
 
 struct RootView: View {
-    @AppStorage("messages.webZoom") private var webZoom = 1.0
-    @AppStorage("messages.hasSeenWelcome") private var hasSeenWelcome = false
-    @State private var selectedSection: MessagesSection? = .inbox
-    @State private var showWelcome = false
-    @State private var isLoading = false
-    @State private var loadError: String?
+    @StateObject private var engine = MessagesWebEngine()
     @StateObject private var connectivity = ConnectivityMonitor()
+    @AppStorage("messages.appearance") private var appearance = "system"
+    @State private var selected: MessageConversation?
+    @State private var query = ""
+    @State private var filter: InboxFilter = .all
+    @State private var showCompose = false
+    @State private var showSettings = false
+    @State private var showGooglePage = false
+
+    private var filtered: [MessageConversation] {
+        engine.conversations.filter { conversation in
+            let matchesQuery = query.isEmpty || conversation.title.localizedCaseInsensitiveContains(query) || conversation.preview.localizedCaseInsensitiveContains(query)
+            let matchesFilter = filter == .all || (filter == .unread && conversation.unread) || (filter == .groups && conversation.group)
+            return matchesQuery && matchesFilter
+        }
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selectedSection) {
-                Section("Google Messages") {
-                    ForEach(MessagesSection.allCases) { section in
-                        Label(section.rawValue, systemImage: section.symbol)
-                            .tag(Optional(section))
-                    }
-                }
-            }
-            .navigationTitle("Messages")
-            .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
-            .safeAreaInset(edge: .bottom) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(connectivity.isOnline ? Color.green : Color.orange)
-                        .frame(width: 8, height: 8)
-                    Text(connectivity.isOnline ? "Internet connected" : "Offline")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-            }
-        } detail: {
-            if selectedSection == .settings {
-                AppSettingsView(zoom: $webZoom, connectivity: connectivity) { selectedSection = .inbox }
+        Group {
+            if showGooglePage || !engine.connected {
+                googleSessionView
             } else {
-                messagesPane
+                nativeInbox
             }
         }
-        .navigationSplitViewStyle(.balanced)
         .task {
-            if !hasSeenWelcome { showWelcome = true }
             BackgroundRefreshScheduler.shared.schedule()
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagesAppBecameActive)) { _ in
-            if selectedSection != .settings {
-                selectedSection = .inbox
-                loadError = nil
-                NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
+            BackgroundRefreshScheduler.shared.schedule()
+            NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
+        }
+        .sheet(isPresented: $showCompose) {
+            ComposeView(conversations: engine.conversations) { conversation in
+                selected = conversation
+                showCompose = false
+            } onNewRecipient: {
+                showCompose = false
+                engine.startNewConversation()
+                showGooglePage = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .messagesWebViewLoaded)) { _ in
-            isLoading = false
-            loadError = nil
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .messagesWebViewFailed)) { notification in
-            isLoading = false
-            loadError = notification.object as? String
-        }
-        .sheet(isPresented: $showWelcome) {
-            WelcomeView {
-                hasSeenWelcome = true
-                showWelcome = false
-                selectedSection = .inbox
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                AppSettingsView(connectivity: connectivity) {
+                    showSettings = false
+                    showGooglePage = true
+                }
             }
             .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
-        .tint(Color(red: 0.22, green: 0.36, blue: 0.88))
+        .tint(Color(red: 0.16, green: 0.38, blue: 0.88))
+        .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
     }
 
-    private var messagesPane: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.blue)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Google Messages")
-                        .font(.headline)
-                    Text(connectivity.isOnline ? "Connected to the web client" : "Reconnect to load messages")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+    private var nativeInbox: some View {
+        NavigationSplitView {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Messages").font(.largeTitle.bold())
+                    Spacer()
+                    Button { showCompose = true } label: {
+                        Image(systemName: "square.and.pencil").font(.title3.weight(.semibold))
+                    }
+                    .accessibilityLabel("New message")
                 }
-                Spacer(minLength: 12)
-                if isLoading {
-                    ProgressView().controlSize(.small)
-                }
-                Button {
-                    reloadPage()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh")
-                .accessibilityLabel("Refresh messages")
-                Button {
-                    webZoom = max(0.8, webZoom - 0.1)
-                } label: {
-                    Image(systemName: "minus.magnifyingglass")
-                }
-                .help("Zoom out")
-                .accessibilityLabel("Zoom out")
-                Button {
-                    webZoom = min(1.4, webZoom + 0.1)
-                } label: {
-                    Image(systemName: "plus.magnifyingglass")
-                }
-                .help("Zoom in")
-                .accessibilityLabel("Zoom in")
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(.bar)
+                .padding(.horizontal, 18)
+                .padding(.top, 16)
+                .padding(.bottom, 10)
 
-            if loadError != nil && !connectivity.isOnline {
-                ContentUnavailableView("You're offline", systemImage: "wifi.slash", description: Text("Reconnect to the internet, then refresh Google Messages."))
-                    .frame(maxHeight: 180)
-            } else if let loadError {
-                ContentUnavailableView("Couldn't load Messages", systemImage: "exclamationmark.arrow.triangle.2.circlepath", description: Text(loadError))
-                    .frame(maxHeight: 180)
-            }
-
-            MessagesWebView(section: selectedSection ?? .inbox, zoom: webZoom, connectivity: connectivity)
-                .id("google-messages-webview")
-                .overlay(alignment: .top) {
-                    if !connectivity.isOnline {
-                        Label("Offline", systemImage: "wifi.slash")
-                            .font(.caption.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(.regularMaterial, in: Capsule())
-                            .padding(.top, 10)
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search", text: $query)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if !query.isEmpty {
+                        Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            .accessibilityLabel("Clear search")
                     }
                 }
+                .padding(10)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 14)
+                .padding(.bottom, 10)
+
+                Picker("Filter conversations", selection: $filter) {
+                    ForEach(InboxFilter.allCases) { item in Text(item.title).tag(item) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
+
+                List(selection: $selected) {
+                    ForEach(filtered) { conversation in
+                        ConversationRow(conversation: conversation)
+                            .tag(Optional(conversation))
+                            .listRowInsets(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 12))
+                    }
+                }
+                .listStyle(.plain)
+                .overlay {
+                    if filtered.isEmpty {
+                        ContentUnavailableView(query.isEmpty ? "No conversations" : "No results", systemImage: "bubble.left.and.bubble.right", description: Text(query.isEmpty ? "Sign in or pair your phone with Google Messages." : "Try another name or phrase."))
+                    }
+                }
+                HStack(spacing: 8) {
+                    Circle().fill(connectivity.isOnline ? .green : .orange).frame(width: 8, height: 8)
+                    Text(connectivity.isOnline ? "Connected" : "Offline")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
+                }
+                .padding(.horizontal, 18).padding(.vertical, 12)
+            }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 430)
+        } detail: {
+            if let selected {
+                ConversationDetailView(conversation: selected, engine: engine)
+            } else {
+                ContentUnavailableView("Your messages", systemImage: "bubble.left.and.bubble.right", description: Text("Choose a conversation or start a new message."))
+            }
         }
-        .background(Color(uiColor: .systemBackground))
-        .onAppear { isLoading = true }
+        .navigationSplitViewStyle(.balanced)
+        .background {
+            if engine.connected && !showGooglePage {
+                MessagesWebHost(engine: engine, visible: false).frame(width: 1, height: 1).opacity(0.01)
+            }
+        }
         .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                Button("Done") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showGooglePage = true } label: { Image(systemName: "globe") }
+                    .help("Open Google Messages web client")
+                    .accessibilityLabel("Open Google Messages web client")
             }
         }
     }
 
-    private func reloadPage() {
-        isLoading = true
-        loadError = nil
-        NotificationCenter.default.post(name: .messagesReloadRequested, object: nil)
+    private var googleSessionView: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                MessagesWebHost(engine: engine, visible: true).ignoresSafeArea(edges: .bottom)
+                if engine.connected {
+                    Label("Switching to iPad Messages", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(.bottom, 18)
+                }
+            }
+            .navigationTitle("Google account & pairing")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { if engine.connected { showGooglePage = false } }
+                        .disabled(!engine.connected)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { NotificationCenter.default.post(name: .messagesReloadRequested, object: nil) } label: { Image(systemName: "arrow.clockwise") }
+                        .accessibilityLabel("Reload Google Messages")
+                }
+            }
+        }
     }
 }
 
-private struct WelcomeView: View {
-    let onContinue: () -> Void
+private enum InboxFilter: String, CaseIterable, Identifiable {
+    case all, unread, groups
+    var id: String { rawValue }
+    var title: String {
+        switch self { case .all: "All"; case .unread: "Unread"; case .groups: "Groups" }
+    }
+}
+
+private struct ConversationRow: View {
+    let conversation: MessageConversation
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(Color.blue.gradient).frame(width: 48, height: 48)
+                Text(String(conversation.title.prefix(1)).uppercased())
+                    .font(.headline).foregroundStyle(.white)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(conversation.title).font(.body.weight(conversation.unread ? .semibold : .medium)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(conversation.time).font(.caption).foregroundStyle(.secondary)
+                }
+                HStack(spacing: 5) {
+                    if conversation.group { Image(systemName: "person.2.fill").font(.caption2) }
+                    Text(conversation.preview.isEmpty ? " " : conversation.preview)
+                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                    Spacer(minLength: 0)
+                    if conversation.unread { Circle().fill(.blue).frame(width: 8, height: 8) }
+                }
+            }
+        }
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct ComposeView: View {
+    let conversations: [MessageConversation]
+    let onSelect: (MessageConversation) -> Void
+    let onNewRecipient: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var results: [MessageConversation] {
+        guard !query.isEmpty else { return conversations }
+        return conversations.filter { $0.title.localizedCaseInsensitiveContains(query) }
+    }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.blue)
-            Text("Messages, made for iPad")
-                .font(.largeTitle.weight(.semibold))
-                .multilineTextAlignment(.center)
-            Text("Sign in to Google or pair your phone with the QR code shown by Google Messages. Your web session is saved inside this app, separately from Safari.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 520)
-            Button(action: onContinue) {
-                Text("Continue to Google Messages")
-                    .font(.headline)
-                    .frame(maxWidth: 360)
-                    .padding(.vertical, 14)
+        NavigationStack {
+            List {
+                Section {
+                    Label("Choose a conversation to continue", systemImage: "bubble.left.and.bubble.right")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                Section("Recent") {
+                    ForEach(results) { conversation in
+                        Button { onSelect(conversation) } label: { ConversationRow(conversation: conversation) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                Section {
+                    Button(action: onNewRecipient) {
+                        Label("Message a phone number or contact", systemImage: "person.crop.circle.badge.plus")
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            Text("Keep your phone connected to the internet for linked-device messaging.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            .searchable(text: $query, prompt: "Name or number")
+            .navigationTitle("New Message")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
         }
-        .padding(32)
     }
-}
-
-extension Notification.Name {
-    static let messagesReloadRequested = Notification.Name("messagesReloadRequested")
 }
