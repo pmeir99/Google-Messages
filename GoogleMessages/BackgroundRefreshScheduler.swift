@@ -32,6 +32,10 @@ final class BackgroundRefreshScheduler {
         }
     }
 
+    func cancel() {
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.taskIdentifier)
+    }
+
     private func handle(_ task: BGAppRefreshTask) {
         schedule()
         let work = Task {
