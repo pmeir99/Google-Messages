@@ -1,6 +1,4 @@
 name: iPad IPA runner candidate
-run-name: IPA-RACE-${{ github.event.inputs.race_id }}
-
 on:
   workflow_dispatch:
     inputs:
@@ -35,7 +33,7 @@ jobs:
         with:
           script: |
             const raceId = process.env.RACE_ID;
-            const ref = `refs/heads/ipa-races/${raceId}`;
+            const ref = `refs/heads/ipa-race-winners/${raceId}`;
             try {
               await github.rest.git.createRef({
                 owner: context.repo.owner,
