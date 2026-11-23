@@ -1,5 +1,5 @@
 name: iPad IPA runner candidate
-run-name: IPA-RACE-${{ inputs.race_id }}-${{ inputs.runner_label }}
+run-name: IPA-RACE-${{ github.event.inputs.race_id }}
 
 on:
   workflow_dispatch:
@@ -67,7 +67,7 @@ jobs:
                 per_page: 100
               });
               candidates = data.workflow_runs.filter(run =>
-                (run.display_title || "").startsWith(`IPA-RACE-${raceId}-`)
+                (run.display_title || "") === `IPA-RACE-${raceId}`
               );
               if (candidates.length >= 3) break;
               await new Promise(resolve => setTimeout(resolve, 2000));
